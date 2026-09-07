@@ -1,0 +1,16 @@
+# Normalise line endings so Windows checkouts and CI agree.
+* text=auto
+
+*.cs   text diff=csharp
+*.md   text
+*.json text
+*.vdf  text
+
+# Unity's own serialized formats must stay LF or the editor rewrites them noisily.
+*.unity  text eol=lf
+*.asset  text eol=lf
+*.meta   text eol=lf
+*.prefab text eol=lf
+
+# If real art ever lands, track it with Git LFS instead of committing blobs:
+#   git lfs track "*.png" "*.fbx" "*.wav"

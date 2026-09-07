@@ -1,0 +1,19 @@
+// Depot contents for the Windows x64 build.
+
+"DepotBuild"
+{
+	"DepotID"     "REPLACE_ME_DEPOTID"
+	"contentroot" "..\Build\Windows64\"
+
+	"FileMapping"
+	{
+		"LocalPath" "*"
+		"DepotPath" "."
+		"recursive" "1"
+	}
+
+	// Never ship these: source maps and debug symbols bloat the depot and leak internals.
+	"FileExclusion" "*.pdb"
+	"FileExclusion" "*_BurstDebugInformation_DoNotShip*"
+	"FileExclusion" "*_BackUpThisFolder_ButDontShipItWithYourGame*"
+}

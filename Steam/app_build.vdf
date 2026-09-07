@@ -1,0 +1,22 @@
+// Steam build script for Hollowmere.
+// Upload with:
+//   steamcmd +login <your_account> +run_app_build ..\Steam\app_build.vdf +quit
+//
+// Replace every REPLACE_ME before first use. AppID and DepotID come from the
+// Steamworks partner site after you have paid the Steam Direct fee for this app.
+
+"appbuild"
+{
+	"appid"          "REPLACE_ME_APPID"
+	"desc"           "Hollowmere build"
+	"buildoutput"    "..\output\"
+	"contentroot"    "..\Build\Windows64\"
+	"setlive"        ""                  // leave empty; set a branch name only when you mean it
+	"preview"        "1"                 // 1 = dry run. Set to 0 for a real upload.
+	"local"          ""
+
+	"depots"
+	{
+		"REPLACE_ME_DEPOTID" "depot_build.vdf"
+	}
+}
