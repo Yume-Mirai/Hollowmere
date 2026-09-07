@@ -11,7 +11,9 @@ it for you, and no tool should offer to.
 1. **Steamworks partner account** — <https://partner.steamgames.com>. Company or sole
    trader details, and identity verification.
 2. **Steam Direct fee** — $100 USD per app. Recoupable once the app earns $1,000 adjusted
-   gross revenue.
+   gross revenue. **Being free does not waive this.** Every app pays it, and since a free
+   game with no monetisation never reaches $1,000 of revenue, treat the $100 as a flat,
+   non-recoverable cost of publishing.
 3. **Tax and banking** — W-9 (US) or W-8BEN (non-US), plus payout bank details. Valve will
    not let you release until these clear.
 4. **Store page** — capsule art, screenshots, trailer, description, tags, age rating.
@@ -20,6 +22,24 @@ it for you, and no tool should offer to.
 6. **Build review** — Valve reviews the first build (typically a few business days). They
    check it launches and matches the store page, not whether it is good.
 7. **Press the buttons** — set the build live, and hit release.
+
+## Pricing: free
+
+Hollowmere ships **free**. Decided 2026-09-08.
+
+On the partner site set the price to $0 rather than choosing the *Free To Play* app type —
+F2P is intended for games with in-app purchases and carries expectations Hollowmere does
+not meet. A plain $0 price is the right shape for a game with no monetisation.
+
+What free changes:
+
+- **Nothing in the code.** There is no monetisation, no IAP, no DRM to strip out.
+- Still costs the $100 Steam Direct fee, which will never be recouped (see above).
+- Tax and banking details are still required by Valve before release, even with no revenue.
+- No refund exposure and no price-related review complaints, which removes most of the
+  commercial pressure from a first release — a good trade for a debut project.
+- Free games get less storefront visibility than paid ones. Wishlists and outside traffic
+  matter more, so the store page and trailer carry more weight, not less.
 
 ## Code side (done, or one command)
 

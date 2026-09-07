@@ -133,7 +133,7 @@ namespace Hollowmere.Player
 
         void RefreshLights()
         {
-            _sceneLights = Object.FindObjectsByType<Light>(FindObjectsSortMode.None);
+            _sceneLights = Object.FindObjectsByType<Light>(FindObjectsInactive.Exclude);
         }
 
         void UpdateFear(float dt)

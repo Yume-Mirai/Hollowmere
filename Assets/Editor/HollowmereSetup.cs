@@ -3,7 +3,8 @@ using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.Rendering;
+// Deliberately no "using UnityEngine.Rendering": it also declares ShadowResolution,
+// which would make the QualitySettings assignment below an ambiguous reference.
 
 namespace Hollowmere.EditorTools
 {
@@ -60,21 +61,41 @@ namespace Hollowmere.EditorTools
             PlayerSettings.resizableWindow = true;
             PlayerSettings.visibleInBackground = false;
             PlayerSettings.allowFullscreenSwitch = true;
-            PlayerSettings.captureSingleScreen = false;
             PlayerSettings.bundleVersion = "0.1.0";
 
-            try
+            // IL2CPP produces a faster, harder-to-decompile build and is what we want to
+            // ship. Setting the enum always succeeds even when the toolchain is absent -
+            // only the build fails, and confusingly - so probe the install directly.
+            if (IsIl2CppInstalled())
             {
-                // IL2CPP produces a faster, harder-to-decompile build for shipping.
                 PlayerSettings.SetScriptingBackend(NamedBuildTarget.Standalone, ScriptingImplementation.IL2CPP);
                 PlayerSettings.SetIl2CppCompilerConfiguration(NamedBuildTarget.Standalone, Il2CppCompilerConfiguration.Release);
-                PlayerSettings.SetApiCompatibilityLevel(NamedBuildTarget.Standalone, ApiCompatibilityLevel.NET_Unity_4_8);
             }
-            catch (System.Exception e)
+            else
             {
-                // Missing IL2CPP module - the game still runs and builds under Mono.
-                Debug.LogWarning("[Hollowmere] Could not set IL2CPP backend (module may not be installed): " + e.Message);
+                PlayerSettings.SetScriptingBackend(NamedBuildTarget.Standalone, ScriptingImplementation.Mono2x);
+                Debug.LogWarning("[Hollowmere] IL2CPP toolchain not installed - falling back to Mono. " +
+                                 "Add 'Windows Build Support (IL2CPP)' in Unity Hub before shipping.");
             }
+
+            PlayerSettings.SetApiCompatibilityLevel(NamedBuildTarget.Standalone, ApiCompatibilityLevel.NET_Unity_4_8);
+        }
+
+        /// <summary>
+        /// True when the Windows IL2CPP variations are actually on disk. The editor ships
+        /// Mono standalone support by default; IL2CPP is a separate Hub module.
+        /// </summary>
+        static bool IsIl2CppInstalled()
+        {
+            string variations = Path.Combine(EditorApplication.applicationContentsPath,
+                "PlaybackEngines", "windowsstandalonesupport", "Variations");
+            if (!Directory.Exists(variations)) return false;
+
+            foreach (string dir in Directory.GetDirectories(variations))
+            {
+                if (Path.GetFileName(dir).IndexOf("il2cpp", System.StringComparison.OrdinalIgnoreCase) >= 0) return true;
+            }
+            return false;
         }
 
         static void ApplyQualitySettings()

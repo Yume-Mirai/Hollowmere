@@ -30,7 +30,7 @@ namespace Hollowmere.UI
             var canvas = UIBuilder.CreateCanvas("UI", 100);
             var root = canvas.gameObject.AddComponent<UIRoot>();
 
-            if (Object.FindFirstObjectByType<EventSystem>() == null)
+            if (Object.FindAnyObjectByType<EventSystem>() == null)
             {
                 var es = new GameObject("EventSystem");
                 es.AddComponent<EventSystem>();

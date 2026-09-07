@@ -1,6 +1,7 @@
 # Hollowmere
 
-A first-person horror/survival game for Windows, built in Unity 6 with the Built-in Render Pipeline.
+A **free** first-person horror/survival game for Windows, built in Unity 6 with the Built-in
+Render Pipeline.
 
 Find the fuses scattered through a dark procedurally generated facility, install them in the
 fuse box, and reach the exit — while something hunts you by sight and by sound.
