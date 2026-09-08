@@ -89,6 +89,21 @@ namespace Hollowmere.Horror
         const float HeadY     = ShoulderY + HeadSize * 0.5f;          // 2.075
         const float ArmX      = BodyWidth * 0.5f + ArmThick * 0.5f;   // 0.455
 
+        // --- face ------------------------------------------------------------
+        // Wide eyes and a grin far too big for the head. Every piece is emissive, so
+        // in the dark the black head vanishes and only the face is left hanging in
+        // the air - which is the entire effect being aimed for.
+
+        const float EyeX       = 0.105f;
+        const float EyeY       = 0.075f;
+        const float EyeWidth   = 0.100f;
+        const float EyeHeight  = 0.085f;
+        const float MouthY     = -0.090f;
+        const float MouthWidth = 0.360f;   // 80% of the head - the grin is the point
+        const float MouthCurve = 0.045f;   // how far the corners lift above the centre
+        const float ToothHeight = 0.080f;
+        const int   TeethCount = 11;
+
         // --- construction ----------------------------------------------------
 
         public static Entity Spawn(LevelData level)
@@ -120,10 +135,7 @@ namespace Hollowmere.Horror
             var headPivot = Pivot(rig, "HeadPivot", new Vector3(0f, HeadY, 0f));
             Part(headPivot, "HeadMesh", Vector3.zero, Vector3.one * HeadSize, skin);
 
-            var eyeGlow = ProceduralMaterials.Emissive(new Color(1f, 0.15f, 0.1f), 4f);
-            float eyeZ = HeadSize * 0.5f + 0.01f;
-            Part(headPivot, "EyeLeft", new Vector3(-0.11f, 0.03f, eyeZ), new Vector3(0.07f, 0.035f, 0.02f), eyeGlow);
-            Part(headPivot, "EyeRight", new Vector3(0.11f, 0.03f, eyeZ), new Vector3(0.07f, 0.035f, 0.02f), eyeGlow);
+            BuildFace(headPivot);
 
             // Arms: small rectangles, pivoted at the shoulder so a rotation swings them
             // from the top rather than spinning them about their middle.
@@ -141,6 +153,43 @@ namespace Hollowmere.Horror
             entity._rig = rig;
             entity._eyes = headPivot;   // sightlines originate from the head
             return entity;
+        }
+
+        /// <summary>
+        /// Two wide eyes and a grin, built onto the front of the head from flat blocks.
+        /// The gaps between the teeth are not modelled - the black of the head showing
+        /// through is what reads as the spaces, the same way it does on a jack-o-lantern.
+        /// </summary>
+        static void BuildFace(Transform head)
+        {
+            float front = HeadSize * 0.5f + 0.005f;
+
+            var glow = ProceduralMaterials.Emissive(new Color(0.95f, 0.94f, 0.90f), 2.0f);
+            var iris = ProceduralMaterials.Flat(new Color(0.02f, 0.02f, 0.025f), 0f);
+
+            // Eyes: a bright block with a dark iris sitting proud of it, so the white
+            // still rings the pupil from an angle.
+            for (int i = 0; i < 2; i++)
+            {
+                float side = i == 0 ? -1f : 1f;
+                Part(head, "Eye", new Vector3(side * EyeX, EyeY, front),
+                    new Vector3(EyeWidth, EyeHeight, 0.02f), glow);
+                Part(head, "Iris", new Vector3(side * EyeX, EyeY, front + 0.012f),
+                    new Vector3(EyeWidth * 0.42f, EyeHeight * 0.55f, 0.01f), iris);
+            }
+
+            // Grin: a row of teeth lifted at the corners by a quadratic, which curves
+            // the mouth upward without needing curved geometry.
+            float pitch = MouthWidth / TeethCount;
+            for (int i = 0; i < TeethCount; i++)
+            {
+                float t = (i + 0.5f) / TeethCount * 2f - 1f;   // -1 at one corner, +1 at the other
+                float x = t * MouthWidth * 0.5f;
+                float y = MouthY + t * t * MouthCurve;
+
+                Part(head, "Tooth", new Vector3(x, y, front),
+                    new Vector3(pitch * 0.62f, ToothHeight, 0.02f), glow);
+            }
         }
 
         /// <summary>Empty transform used as a joint. Stays at scale 1 so children are undistorted.</summary>
