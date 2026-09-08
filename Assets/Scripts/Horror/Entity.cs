@@ -39,6 +39,13 @@ namespace Hollowmere.Horror
         public float viewDistanceDark = 7.5f;
         public float flashlightVisibilityBonus = 14f;
 
+        [Header("Float")]
+        public float hoverHeight = 0.22f;
+        public float bobAmplitude = 0.10f;
+        public float bobSpeed = 1.6f;
+        public float chaseBobSpeedMultiplier = 2.6f;
+        public float chaseBobAmplitudeMultiplier = 1.8f;
+
         [Header("Behaviour")]
         public float killDistance = 1.35f;
         public float loseSightGrace = 3.5f;
@@ -60,6 +67,8 @@ namespace Hollowmere.Horror
 
         AudioSource _growl;
         Transform _eyes;
+        Transform _rig;
+        float _bobPhase;
 
         // --- proportions -----------------------------------------------------
         // Long arms and a small head on a tall body read as wrong at a glance, which
@@ -95,15 +104,20 @@ namespace Hollowmere.Horror
             capsule.center = new Vector3(0f, TotalHeight * 0.5f, 0f);
             capsule.isTrigger = true;
 
+            // Everything visual hangs off this one transform so the float can lift and
+            // bob the whole figure without disturbing the root - the root stays on the
+            // floor, which keeps pathing and kill distance independent of bob phase.
+            var rig = Pivot(go.transform, "Rig", Vector3.zero);
+
             var skin = ProceduralMaterials.Flat(new Color(0.045f, 0.04f, 0.05f), 0.05f);
 
             // Body: one big rectangle, unpivoted - it does not move independently.
-            Part(go.transform, "Body", new Vector3(0f, BodyY, 0f),
+            Part(rig, "Body", new Vector3(0f, BodyY, 0f),
                 new Vector3(BodyWidth, BodyHeight, BodyDepth), skin);
 
             // Head: a square, on its own pivot so it can turn to track the player
             // without shearing the mesh (a scaled parent would scale its children).
-            var headPivot = Pivot(go.transform, "HeadPivot", new Vector3(0f, HeadY, 0f));
+            var headPivot = Pivot(rig, "HeadPivot", new Vector3(0f, HeadY, 0f));
             Part(headPivot, "HeadMesh", Vector3.zero, Vector3.one * HeadSize, skin);
 
             var eyeGlow = ProceduralMaterials.Emissive(new Color(1f, 0.15f, 0.1f), 4f);
@@ -113,17 +127,18 @@ namespace Hollowmere.Horror
 
             // Arms: small rectangles, pivoted at the shoulder so a rotation swings them
             // from the top rather than spinning them about their middle.
-            var armL = Pivot(go.transform, "ArmLeftPivot", new Vector3(-ArmX, ShoulderY, 0f));
+            var armL = Pivot(rig, "ArmLeftPivot", new Vector3(-ArmX, ShoulderY, 0f));
             Part(armL, "ArmLeftMesh", new Vector3(0f, -ArmLength * 0.5f, 0f),
                 new Vector3(ArmThick, ArmLength, ArmThick), skin);
 
-            var armR = Pivot(go.transform, "ArmRightPivot", new Vector3(ArmX, ShoulderY, 0f));
+            var armR = Pivot(rig, "ArmRightPivot", new Vector3(ArmX, ShoulderY, 0f));
             Part(armR, "ArmRightMesh", new Vector3(0f, -ArmLength * 0.5f, 0f),
                 new Vector3(ArmThick, ArmLength, ArmThick), skin);
 
             var entity = go.AddComponent<Entity>();
             entity._grid = level.Grid;
             entity._patrolPoints = new List<Vector3>(level.PatrolPoints);
+            entity._rig = rig;
             entity._eyes = headPivot;   // sightlines originate from the head
             return entity;
         }
@@ -194,6 +209,7 @@ namespace Hollowmere.Horror
             }
 
             MoveAlongPath(CurrentSpeed());
+            UpdateFloat();
             UpdateGrowl(distanceToPlayer);
 
             if (distanceToPlayer <= killDistance && !IsPlayerSafelyHidden(player))
@@ -406,6 +422,34 @@ namespace Hollowmere.Horror
 
             var facing = Quaternion.LookRotation(new Vector3(direction.x, 0f, direction.z), Vector3.up);
             transform.rotation = Quaternion.Slerp(transform.rotation, facing, turnSpeed * Time.deltaTime);
+        }
+
+        /// <summary>
+        /// Lifts the figure off the floor and bobs it. Doing this in code rather than as
+        /// a baked clip means the motion can carry state: a slow calm drift on patrol,
+        /// a fast agitated bob in a chase, so the player can read intent from across a room.
+        /// </summary>
+        void UpdateFloat()
+        {
+            if (_rig == null) return;
+
+            float agitation;
+            switch (State)
+            {
+                case EntityState.Chase: agitation = 1f; break;
+                case EntityState.Patrol: agitation = 0f; break;
+                default: agitation = 0.5f; break;   // Investigate and Search
+            }
+
+            float speed = bobSpeed * Mathf.Lerp(1f, chaseBobSpeedMultiplier, agitation);
+            float amplitude = bobAmplitude * Mathf.Lerp(1f, chaseBobAmplitudeMultiplier, agitation);
+
+            // Accumulate phase rather than using Time.time * speed: multiplying live time
+            // by a changing speed makes the wave jump discontinuously on every state change.
+            _bobPhase += Time.deltaTime * speed * Mathf.PI * 2f;
+            if (_bobPhase > Mathf.PI * 2f) _bobPhase -= Mathf.PI * 2f;
+
+            _rig.localPosition = new Vector3(0f, hoverHeight + Mathf.Sin(_bobPhase) * amplitude, 0f);
         }
 
         void UpdateGrowl(float distanceToPlayer)
