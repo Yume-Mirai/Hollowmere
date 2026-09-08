@@ -61,6 +61,25 @@ namespace Hollowmere.Horror
         AudioSource _growl;
         Transform _eyes;
 
+        // --- proportions -----------------------------------------------------
+        // Long arms and a small head on a tall body read as wrong at a glance, which
+        // is the whole job of a silhouette seen at the edge of a torch beam.
+
+        const float TotalHeight = 2.30f;
+        const float HeadSize    = 0.45f;
+        const float BodyWidth   = 0.75f;
+        const float BodyHeight  = 1.15f;
+        const float BodyDepth   = 0.40f;
+        const float ArmThick    = 0.16f;
+        const float ArmLength   = 1.00f;
+
+        // Derived: the head sits straight on the body with no neck, blocky-style.
+        const float BodyBaseY = TotalHeight - HeadSize - BodyHeight;  // 0.70
+        const float BodyY     = BodyBaseY + BodyHeight * 0.5f;        // 1.275
+        const float ShoulderY = BodyBaseY + BodyHeight;               // 1.85
+        const float HeadY     = ShoulderY + HeadSize * 0.5f;          // 2.075
+        const float ArmX      = BodyWidth * 0.5f + ArmThick * 0.5f;   // 0.455
+
         // --- construction ----------------------------------------------------
 
         public static Entity Spawn(LevelData level)
@@ -68,30 +87,69 @@ namespace Hollowmere.Horror
             var go = new GameObject("Entity");
             go.transform.position = level.EntitySpawn;
 
-            var body = LevelGenerator.MakeBox(go.transform, "Body",
-                level.EntitySpawn + Vector3.up * 1.15f, new Vector3(0.7f, 2.3f, 0.55f),
-                ProceduralMaterials.Flat(new Color(0.045f, 0.04f, 0.05f), 0.05f));
-            // Trigger so it never shoves the player through a wall; the kill is by distance.
-            var collider = body.GetComponent<Collider>();
-            if (collider != null) collider.isTrigger = true;
+            // One trigger collider on the root rather than one per limb: it never shoves
+            // the player through a wall, and the kill is decided by distance anyway.
+            var capsule = go.AddComponent<CapsuleCollider>();
+            capsule.height = TotalHeight;
+            capsule.radius = 0.40f;
+            capsule.center = new Vector3(0f, TotalHeight * 0.5f, 0f);
+            capsule.isTrigger = true;
 
-            var eyes = new GameObject("Eyes").transform;
-            eyes.SetParent(go.transform, false);
-            eyes.localPosition = new Vector3(0f, 1.95f, 0.28f);
+            var skin = ProceduralMaterials.Flat(new Color(0.045f, 0.04f, 0.05f), 0.05f);
 
-            foreach (float side in new[] { -0.13f, 0.13f })
-            {
-                var eye = LevelGenerator.MakeBox(eyes, "Eye",
-                    eyes.position + new Vector3(side, 0f, 0f), new Vector3(0.07f, 0.035f, 0.02f),
-                    ProceduralMaterials.Emissive(new Color(1f, 0.15f, 0.1f), 4f));
-                Destroy(eye.GetComponent<Collider>());
-            }
+            // Body: one big rectangle, unpivoted - it does not move independently.
+            Part(go.transform, "Body", new Vector3(0f, BodyY, 0f),
+                new Vector3(BodyWidth, BodyHeight, BodyDepth), skin);
+
+            // Head: a square, on its own pivot so it can turn to track the player
+            // without shearing the mesh (a scaled parent would scale its children).
+            var headPivot = Pivot(go.transform, "HeadPivot", new Vector3(0f, HeadY, 0f));
+            Part(headPivot, "HeadMesh", Vector3.zero, Vector3.one * HeadSize, skin);
+
+            var eyeGlow = ProceduralMaterials.Emissive(new Color(1f, 0.15f, 0.1f), 4f);
+            float eyeZ = HeadSize * 0.5f + 0.01f;
+            Part(headPivot, "EyeLeft", new Vector3(-0.11f, 0.03f, eyeZ), new Vector3(0.07f, 0.035f, 0.02f), eyeGlow);
+            Part(headPivot, "EyeRight", new Vector3(0.11f, 0.03f, eyeZ), new Vector3(0.07f, 0.035f, 0.02f), eyeGlow);
+
+            // Arms: small rectangles, pivoted at the shoulder so a rotation swings them
+            // from the top rather than spinning them about their middle.
+            var armL = Pivot(go.transform, "ArmLeftPivot", new Vector3(-ArmX, ShoulderY, 0f));
+            Part(armL, "ArmLeftMesh", new Vector3(0f, -ArmLength * 0.5f, 0f),
+                new Vector3(ArmThick, ArmLength, ArmThick), skin);
+
+            var armR = Pivot(go.transform, "ArmRightPivot", new Vector3(ArmX, ShoulderY, 0f));
+            Part(armR, "ArmRightMesh", new Vector3(0f, -ArmLength * 0.5f, 0f),
+                new Vector3(ArmThick, ArmLength, ArmThick), skin);
 
             var entity = go.AddComponent<Entity>();
             entity._grid = level.Grid;
             entity._patrolPoints = new List<Vector3>(level.PatrolPoints);
-            entity._eyes = eyes;
+            entity._eyes = headPivot;   // sightlines originate from the head
             return entity;
+        }
+
+        /// <summary>Empty transform used as a joint. Stays at scale 1 so children are undistorted.</summary>
+        static Transform Pivot(Transform parent, string name, Vector3 localPosition)
+        {
+            var t = new GameObject(name).transform;
+            t.SetParent(parent, false);
+            t.localPosition = localPosition;
+            return t;
+        }
+
+        /// <summary>A single box limb, positioned in local space so it follows the rig.</summary>
+        static GameObject Part(Transform parent, string name, Vector3 localPosition, Vector3 size, Material material)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = name;
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPosition;
+            go.transform.localScale = size;
+            go.GetComponent<MeshRenderer>().sharedMaterial = material;
+
+            // The root capsule is the only collider; limb colliders would fight the raycasts.
+            Destroy(go.GetComponent<Collider>());
+            return go;
         }
 
         void Awake()
