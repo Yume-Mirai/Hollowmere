@@ -34,7 +34,12 @@ namespace Hollowmere.Gen
         public const int MinRoom = 3;
         public const int MaxRoom = 8;
 
-        public static LevelData Generate(int seed, int fuseCount)
+        /// <summary>
+        /// Layout only - grid, rooms and key positions, with no GameObjects created.
+        /// Split out from <see cref="Generate"/> so the layout can be validated across
+        /// hundreds of seeds headlessly, without instantiating a level's worth of geometry.
+        /// </summary>
+        public static LevelData GenerateData(int seed, int fuseCount)
         {
             var rng = new System.Random(seed);
             var data = new LevelData { Grid = new LevelGrid(GridW, GridH, CellSize) };
@@ -42,6 +47,17 @@ namespace Hollowmere.Gen
             var rooms = CarveRooms(data.Grid, rng);
             CarveCorridors(data.Grid, rooms, rng);
             ChooseKeyPositions(data, rooms, rng, fuseCount);
+
+            return data;
+        }
+
+        public static LevelData Generate(int seed, int fuseCount)
+        {
+            var data = GenerateData(seed, fuseCount);
+
+            // Separate stream for cosmetics: light and crate placement must not shift the
+            // layout, so decorating cannot share the rng that carved it.
+            var rng = new System.Random(unchecked(seed * 31 + 17));
 
             var root = new GameObject("Level").transform;
             data.Root = root;
